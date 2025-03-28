@@ -1,150 +1,204 @@
--- Enable necessary extensions
-create extension if not exists "uuid-ossp";
+-- Schema for EzAIBotz Supabase Database
 
--- Create tables
-create table public.users (
-    id uuid references auth.users on delete cascade not null primary key,
-    email text not null unique,
-    full_name text,
-    company text,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- Enable Row Level Security (RLS)
+ALTER DATABASE postgres SET auth.strict_mode = on;
+
+-- Create tables with proper relations and security policies
+
+-- Chatbots Table
+CREATE TABLE IF NOT EXISTS public.chatbots (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  welcome_message TEXT DEFAULT 'How can I help you today?',
+  primary_color TEXT DEFAULT '#4F46E5',
+  is_active BOOLEAN DEFAULT TRUE,
+  api_key UUID DEFAULT uuid_generate_v4() NOT NULL,
+  model_configuration JSONB DEFAULT '{}'::JSONB
 );
 
-create table public.chatbots (
-    id uuid default uuid_generate_v4() primary key,
-    name text not null,
-    description text not null,
-    type text not null check (type in ('ecommerce', 'support', 'appointment', 'financial', 'education', 'realestate')),
-    config jsonb not null default '{"model": "deepseek-chat", "temperature": 0.7, "max_tokens": 1000}'::jsonb,
-    user_id uuid references public.users on delete cascade not null,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- Messages Table
+CREATE TABLE IF NOT EXISTS public.messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+  chatbot_id UUID NOT NULL REFERENCES public.chatbots(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL,
+  user_message TEXT NOT NULL,
+  ai_response TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}'::JSONB
 );
 
-create table public.conversations (
-    id uuid default uuid_generate_v4() primary key,
-    chatbot_id uuid references public.chatbots on delete cascade not null,
-    status text not null check (status in ('active', 'completed', 'archived')) default 'active',
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- Analytics Table
+CREATE TABLE IF NOT EXISTS public.analytics (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+  chatbot_id UUID NOT NULL REFERENCES public.chatbots(id) ON DELETE CASCADE,
+  conversation_count INTEGER DEFAULT 0,
+  message_count INTEGER DEFAULT 0,
+  average_response_time FLOAT DEFAULT 0,
+  user_satisfaction FLOAT DEFAULT 0,
+  popular_topics JSONB DEFAULT '[]'::JSONB,
+  conversations_by_day JSONB DEFAULT '{}'::JSONB
 );
 
-create table public.messages (
-    id uuid default uuid_generate_v4() primary key,
-    conversation_id uuid references public.conversations on delete cascade not null,
-    role text not null check (role in ('user', 'assistant')),
-    content text not null,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- Feedback Table
+CREATE TABLE IF NOT EXISTS public.feedback (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+  message_id UUID NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE,
+  rating INTEGER,
+  comment TEXT,
+  source TEXT
 );
 
--- Create indexes
-create index chatbots_user_id_idx on public.chatbots(user_id);
-create index conversations_chatbot_id_idx on public.conversations(chatbot_id);
-create index messages_conversation_id_idx on public.messages(conversation_id);
+-- Set up Row Level Security Policies
 
--- Set up Row Level Security (RLS)
-alter table public.users enable row level security;
-alter table public.chatbots enable row level security;
-alter table public.conversations enable row level security;
-alter table public.messages enable row level security;
+-- Chatbots policies
+ALTER TABLE public.chatbots ENABLE ROW LEVEL SECURITY;
 
--- Create policies
-create policy "Users can view their own data"
-    on public.users for select
-    using (auth.uid() = id);
+CREATE POLICY "Users can create their own chatbots"
+  ON public.chatbots
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
-create policy "Users can update their own data"
-    on public.users for update
-    using (auth.uid() = id);
+CREATE POLICY "Users can view their own chatbots"
+  ON public.chatbots
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
 
-create policy "Users can view their own chatbots"
-    on public.chatbots for select
-    using (auth.uid() = user_id);
+CREATE POLICY "Users can update their own chatbots"
+  ON public.chatbots
+  FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = user_id);
 
-create policy "Users can create their own chatbots"
-    on public.chatbots for insert
-    with check (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own chatbots"
+  ON public.chatbots
+  FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
 
-create policy "Users can update their own chatbots"
-    on public.chatbots for update
-    using (auth.uid() = user_id);
+-- Messages policies
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
-create policy "Users can delete their own chatbots"
-    on public.chatbots for delete
-    using (auth.uid() = user_id);
+CREATE POLICY "Users can view messages for their chatbots"
+  ON public.messages
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.chatbots
+      WHERE id = messages.chatbot_id
+      AND user_id = auth.uid()
+    )
+  );
 
-create policy "Users can view conversations for their chatbots"
-    on public.conversations for select
-    using (
-        exists (
-            select 1 from public.chatbots
-            where chatbots.id = conversations.chatbot_id
-            and chatbots.user_id = auth.uid()
-        )
-    );
+CREATE POLICY "Public can insert messages into active chatbots"
+  ON public.messages
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.chatbots
+      WHERE id = chatbot_id
+      AND is_active = TRUE
+    )
+  );
 
-create policy "Users can create conversations for their chatbots"
-    on public.conversations for insert
-    with check (
-        exists (
-            select 1 from public.chatbots
-            where chatbots.id = conversations.chatbot_id
-            and chatbots.user_id = auth.uid()
-        )
-    );
+-- Analytics policies
+ALTER TABLE public.analytics ENABLE ROW LEVEL SECURITY;
 
-create policy "Users can update conversations for their chatbots"
-    on public.conversations for update
-    using (
-        exists (
-            select 1 from public.chatbots
-            where chatbots.id = conversations.chatbot_id
-            and chatbots.user_id = auth.uid()
-        )
-    );
+CREATE POLICY "Users can view analytics for their chatbots"
+  ON public.analytics
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.chatbots
+      WHERE id = analytics.chatbot_id
+      AND user_id = auth.uid()
+    )
+  );
 
-create policy "Users can delete conversations for their chatbots"
-    on public.conversations for delete
-    using (
-        exists (
-            select 1 from public.chatbots
-            where chatbots.id = conversations.chatbot_id
-            and chatbots.user_id = auth.uid()
-        )
-    );
+CREATE POLICY "Service role can manage analytics"
+  ON public.analytics
+  FOR ALL
+  TO service_role
+  USING (TRUE)
+  WITH CHECK (TRUE);
 
-create policy "Users can view messages for their conversations"
-    on public.messages for select
-    using (
-        exists (
-            select 1 from public.conversations
-            join public.chatbots on chatbots.id = conversations.chatbot_id
-            where conversations.id = messages.conversation_id
-            and chatbots.user_id = auth.uid()
-        )
-    );
+-- Feedback policies
+ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
 
-create policy "Users can create messages for their conversations"
-    on public.messages for insert
-    with check (
-        exists (
-            select 1 from public.conversations
-            join public.chatbots on chatbots.id = conversations.chatbot_id
-            where conversations.id = messages.conversation_id
-            and chatbots.user_id = auth.uid()
-        )
-    );
+CREATE POLICY "Anyone can insert feedback"
+  ON public.feedback
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (TRUE);
 
--- Create functions
-create or replace function public.handle_new_user()
-returns trigger as $$
-begin
-    insert into public.users (id, email)
-    values (new.id, new.email);
-    return new;
-end;
-$$ language plpgsql security definer;
+CREATE POLICY "Users can view feedback for their chatbots"
+  ON public.feedback
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.messages m
+      JOIN public.chatbots c ON m.chatbot_id = c.id
+      WHERE m.id = feedback.message_id
+      AND c.user_id = auth.uid()
+    )
+  );
 
--- Create triggers
-create trigger on_auth_user_created
-    after insert on auth.users
-    for each row execute procedure public.handle_new_user(); 
+-- Create functions and triggers
+
+-- Update updated_at timestamp function
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add trigger to chatbots table
+CREATE TRIGGER update_chatbots_updated_at
+BEFORE UPDATE ON public.chatbots
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- Function to update analytics when a new message is added
+CREATE OR REPLACE FUNCTION update_analytics_on_message()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Update message count
+  INSERT INTO public.analytics (chatbot_id, message_count, conversation_count)
+  VALUES (NEW.chatbot_id, 1, 0)
+  ON CONFLICT (chatbot_id) 
+  DO UPDATE SET 
+    message_count = public.analytics.message_count + 1,
+    updated_at = now();
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for updating analytics
+CREATE TRIGGER update_analytics_trigger
+AFTER INSERT ON public.messages
+FOR EACH ROW
+EXECUTE FUNCTION update_analytics_on_message();
+
+-- Create indexes for performance
+CREATE INDEX idx_messages_chatbot_id ON public.messages(chatbot_id);
+CREATE INDEX idx_messages_session_id ON public.messages(session_id);
+CREATE INDEX idx_analytics_chatbot_id ON public.analytics(chatbot_id);
+CREATE INDEX idx_feedback_message_id ON public.feedback(message_id); 

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EzAIBotz Widget Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            color: #111827;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #4F46E5;
+            margin-bottom: 1rem;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            border-bottom: 2px solid #4F46E5;
+            color: #4F46E5;
+            font-weight: 500;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        code {
+            background-color: #f3f4f6;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f3f4f6;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: monospace;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .demo-area {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .iframe-container {
+            width: 100%;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 500px;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4F46E5;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 500;
+            margin-right: 10px;
+        }
+        .note {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>EzAIBotz Widget Embedding Test</h1>
+        
+        <div class="note">
+            <strong>Note:</strong> To test this page, first replace the chatbot ID with a valid ID from your account.
+            This page demonstrates both embedding methods: the floating widget and the inline iframe.
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="floating">Floating Widget</div>
+            <div class="tab" data-tab="inline">Inline Widget</div>
+            <div class="tab" data-tab="code">Code Examples</div>
+        </div>
+        
+        <div class="tab-content active" id="floating">
+            <div class="card">
+                <h2>Floating Chat Widget</h2>
+                <p>This example shows the floating chat bubble in the bottom right of the screen. Click it to open the chat window.</p>
+                <p>The floating widget is ideal when you want to provide chat functionality without taking up space on your page.</p>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="inline">
+            <div class="card">
+                <h2>Inline Chat Widget</h2>
+                <p>This example shows the chat widget embedded directly in the page using an iframe.</p>
+                <p>The inline widget is ideal when you want to integrate the chat experience directly within your page layout.</p>
+                
+                <div class="iframe-container">
+                    <!-- Replace YOUR_CHATBOT_ID with a real chatbot ID -->
+                    <iframe src="/embed/YOUR_CHATBOT_ID" title="Chat with EzAIBotz"></iframe>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="code">
+            <div class="card">
+                <h2>Code Examples</h2>
+                
+                <h3>Floating Widget Code</h3>
+                <pre><code>&lt;!-- EzAIBotz Chat Widget -->
+&lt;script 
+  src="/widget.js" 
+  data-chatbot-id="YOUR_CHATBOT_ID"
+  data-primary-color="#4F46E5" 
+  data-api-url="/api/chat"
+  data-welcome-message="Hello! How can I help you today?">
+&lt;/script></code></pre>
+                
+                <h3>Inline Widget Code</h3>
+                <pre><code>&lt;iframe
+  src="/embed/YOUR_CHATBOT_ID"
+  width="400"
+  height="600"
+  frameBorder="0"
+  title="Chat with EzAIBotz"
+  style="border: 1px solid #e5e7eb; border-radius: 0.5rem;"
+>&lt;/iframe></code></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the floating widget with YOUR_CHATBOT_ID replaced -->
+    <script>
+        // Tab functionality
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                tab.classList.add('active');
+                
+                // Hide all tab content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // Show related content
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+    </script>
+    
+    <!-- EzAIBotz Chat Widget - Replace YOUR_CHATBOT_ID with a real chatbot ID -->
+    <script 
+      src="/widget.js" 
+      data-chatbot-id="YOUR_CHATBOT_ID"
+      data-primary-color="#4F46E5" 
+      data-api-url="/api/chat"
+      data-welcome-message="👋 Hello! I'm an EzAIBotz chatbot. How can I help you today?">
+    </script>
+</body>
+</html> 

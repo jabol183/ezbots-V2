@@ -20,6 +20,8 @@ export default function NewChatbotPage() {
     setLoading(true)
 
     try {
+      console.log('Submitting chatbot data:', { name, description, type });
+      
       const response = await fetch('/api/chatbots', {
         method: 'POST',
         headers: {
@@ -35,9 +37,11 @@ export default function NewChatbotPage() {
             max_tokens: 1000,
           },
         }),
-      })
+      });
 
-      const data = await response.json()
+      // Always parse the JSON response first
+      const data = await response.json();
+      console.log('Response from API:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to create chatbot')
@@ -45,6 +49,7 @@ export default function NewChatbotPage() {
 
       router.push(`/dashboard/chatbots/${data.id}`)
     } catch (err) {
+      console.error('Error creating chatbot:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
@@ -61,7 +66,7 @@ export default function NewChatbotPage() {
           <div className="max-w-2xl mx-auto">
             <h1 className="text-2xl font-semibold text-gray-900 mb-6">Create New Chatbot</h1>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
                   {error}
@@ -80,6 +85,7 @@ export default function NewChatbotPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="e.g. Support Assistant"
                 />
               </div>
 
@@ -95,6 +101,7 @@ export default function NewChatbotPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="Describe what this chatbot will help with..."
                 />
               </div>
 
@@ -117,9 +124,12 @@ export default function NewChatbotPage() {
                   <option value="education">Educational Assistant</option>
                   <option value="realestate">Real Estate Guide</option>
                 </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  This will determine the chatbot's initial settings and appearance.
+                </p>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-4">
                 <button
                   type="button"
                   onClick={() => router.back()}

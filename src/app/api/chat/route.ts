@@ -1,124 +1,106 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { setCorsHeaders } from '@/lib/cors'
 import { generateChatCompletion } from '@/lib/deepseek'
+import { setCorsHeaders, handleCorsPreflightRequest } from '@/lib/cors'
+import { v4 as uuidv4 } from 'uuid'
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(request: Request) {
+  return handleCorsPreflightRequest(request)
+}
 
 export async function POST(request: Request) {
+  // Handle CORS
   const origin = request.headers.get('origin')
   const response = NextResponse.next()
   
-  // Set CORS headers if needed
   if (origin) {
     setCorsHeaders(response, origin)
   }
-
+  
   try {
-    const { message, chatbotId } = await request.json()
-    const supabase = createRouteHandlerClient({ cookies })
+    const { message, chatbotId, sessionId = uuidv4() } = await request.json()
     
-    // Check if user is authenticated
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!message || !chatbotId) {
+      return NextResponse.json({ error: 'Message and chatbotId are required' }, { status: 400 })
     }
     
-    // Get chatbot details
+    const supabase = createRouteHandlerClient({ cookies })
+    
+    // Check if this is a valid chatbot
     const { data: chatbot, error: chatbotError } = await supabase
       .from('chatbots')
       .select('*')
       .eq('id', chatbotId)
       .single()
     
-    if (chatbotError) {
-      return NextResponse.json({ error: 'Failed to fetch chatbot' }, { status: 500 })
-    }
-    
-    if (!chatbot) {
+    if (chatbotError || !chatbot) {
+      console.error('Chatbot fetch error:', chatbotError)
       return NextResponse.json({ error: 'Chatbot not found' }, { status: 404 })
     }
     
-    // Get or create a conversation
-    let conversationId = ''
-    
-    // Look for an existing conversation first
-    const { data: existingConversation } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('chatbot_id', chatbotId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-    
-    if (existingConversation && existingConversation.length > 0) {
-      conversationId = existingConversation[0].id
-    } else {
-      // Create a new conversation if none exists
-      const { data: newConversation, error: convError } = await supabase
-        .from('conversations')
-        .insert({
-          chatbot_id: chatbotId,
-          user_id: session.user.id,
-          title: 'New Conversation',
-        })
-        .select()
-      
-      if (convError || !newConversation) {
-        return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
-      }
-      
-      conversationId = newConversation[0].id
-    }
-    
-    // Save user message to database
-    const { error: msgError } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        role: 'user',
-        content: message,
-      })
-    
-    if (msgError) {
-      return NextResponse.json({ error: 'Failed to save message' }, { status: 500 })
-    }
-    
-    // Get conversation history for context
-    const { data: messageHistory } = await supabase
+    // Get recent message history for context (optional)
+    const { data: recentMessages } = await supabase
       .from('messages')
       .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true })
+      .eq('chatbot_id', chatbotId)
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: false })
+      .limit(5)
     
-    // Generate AI response
+    // Generate AI response using the DeepSeek integration
     const aiResponse = await generateChatCompletion(
-      messageHistory || [],
+      recentMessages || [],
       message,
-      chatbot.config
+      chatbot.model_configuration
     )
     
-    // Save AI response to database
-    const { error: aiMsgError } = await supabase
+    // Save the message and response to the database
+    const { error: insertError } = await supabase
       .from('messages')
       .insert({
-        conversation_id: conversationId,
-        role: 'assistant',
-        content: aiResponse,
+        chatbot_id: chatbotId,
+        session_id: sessionId,
+        user_message: message,
+        ai_response: aiResponse,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          ip: request.headers.get('x-forwarded-for') || 'unknown'
+        }
       })
     
-    if (aiMsgError) {
-      return NextResponse.json({ error: 'Failed to save AI response' }, { status: 500 })
+    if (insertError) {
+      console.error('Error saving message:', insertError)
+      // We still want to return the AI response even if saving fails
     }
     
-    // Return the response
-    return NextResponse.json({
-      response: aiResponse,
-      conversationId,
+    // Return the AI response to the client
+    const jsonResponse = NextResponse.json({
+      botResponse: aiResponse,
+      sessionId
     })
+    
+    // Apply CORS headers to the response
+    if (origin) {
+      setCorsHeaders(jsonResponse, origin)
+    }
+    
+    return jsonResponse
+    
   } catch (error) {
-    console.error('Chat handler error:', error)
-    return NextResponse.json(
-      { error: 'Failed to process chat request' },
+    console.error('Unexpected error in chat API:', error)
+    const errorResponse = NextResponse.json(
+      { error: 'An unexpected error occurred' },
       { status: 500 }
     )
+    
+    // Apply CORS headers to the error response
+    const origin = request.headers.get('origin')
+    if (origin) {
+      setCorsHeaders(errorResponse, origin)
+    }
+    
+    return errorResponse
   }
 } 
