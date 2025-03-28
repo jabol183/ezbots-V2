@@ -2,20 +2,24 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import NavBar from '@/components/layout/NavBar'
+import { Database } from '@/lib/supabase'
 
-type ChatbotConfig = {
+// Define types to match the database schema
+type ChatbotModelConfiguration = {
   model: string
   temperature: number
   max_tokens: number
 }
 
-type Chatbot = {
-  id: string
-  name: string
-  description: string
-  type: string
-  config: ChatbotConfig
+type Chatbot = Database['public']['Tables']['chatbots']['Row'] & {
+  model_configuration?: ChatbotModelConfiguration
+}
+
+// Default configuration if none is provided
+const DEFAULT_CONFIG: ChatbotModelConfiguration = {
+  model: 'deepseek-chat',
+  temperature: 0.7,
+  max_tokens: 1000,
 }
 
 export default function ChatbotSettingsPage({ params }: { params: { id: string } }) {
@@ -24,11 +28,7 @@ export default function ChatbotSettingsPage({ params }: { params: { id: string }
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [config, setConfig] = useState<ChatbotConfig>({
-    model: 'deepseek-chat',
-    temperature: 0.7,
-    max_tokens: 1000,
-  })
+  const [config, setConfig] = useState<ChatbotModelConfiguration>(DEFAULT_CONFIG)
 
   useEffect(() => {
     fetchChatbot()
@@ -42,7 +42,12 @@ export default function ChatbotSettingsPage({ params }: { params: { id: string }
       }
       const data = await response.json()
       setChatbot(data)
-      setConfig(data.config)
+      
+      // If model_configuration exists in the chatbot data, use it
+      // Otherwise, keep using the default config
+      if (data.model_configuration) {
+        setConfig(data.model_configuration as ChatbotModelConfiguration)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -64,13 +69,15 @@ export default function ChatbotSettingsPage({ params }: { params: { id: string }
         body: JSON.stringify({
           name: chatbot?.name,
           description: chatbot?.description,
-          type: chatbot?.type,
-          config,
+          primary_color: chatbot?.primary_color,
+          welcome_message: chatbot?.welcome_message,
+          model_configuration: config,
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update chatbot')
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update chatbot')
       }
 
       router.push(`/dashboard/chatbots/${params.id}`)
@@ -91,8 +98,6 @@ export default function ChatbotSettingsPage({ params }: { params: { id: string }
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <NavBar />
-
       {/* Main content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 sm:px-0">
@@ -138,6 +143,40 @@ export default function ChatbotSettingsPage({ params }: { params: { id: string }
                 </div>
 
                 <div>
+                  <label htmlFor="welcomeMessage" className="block text-sm font-medium text-gray-700">
+                    Welcome Message
+                  </label>
+                  <textarea
+                    id="welcomeMessage"
+                    name="welcomeMessage"
+                    rows={2}
+                    value={chatbot?.welcome_message || ''}
+                    onChange={(e) => setChatbot((prev) => prev ? { ...prev, welcome_message: e.target.value } : null)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="How can I help you today?"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700">
+                    Primary Color
+                  </label>
+                  <div className="mt-1 flex items-center">
+                    <input
+                      type="color"
+                      id="primaryColor"
+                      name="primaryColor"
+                      value={chatbot?.primary_color || '#4F46E5'}
+                      onChange={(e) => setChatbot((prev) => prev ? { ...prev, primary_color: e.target.value } : null)}
+                      className="h-8 w-8 rounded border border-gray-300 mr-2"
+                    />
+                    <span className="text-sm text-gray-500">{chatbot?.primary_color || '#4F46E5'}</span>
+                  </div>
+                </div>
+
+                <h2 className="text-lg font-medium text-gray-900 pt-4 border-t">AI Model Configuration</h2>
+
+                <div>
                   <label htmlFor="model" className="block text-sm font-medium text-gray-700">
                     AI Model
                   </label>
@@ -145,7 +184,7 @@ export default function ChatbotSettingsPage({ params }: { params: { id: string }
                     id="model"
                     name="model"
                     required
-                    value={config.model}
+                    value={config?.model || 'deepseek-chat'}
                     onChange={(e) => setConfig((prev) => ({ ...prev, model: e.target.value }))}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   >
@@ -165,12 +204,12 @@ export default function ChatbotSettingsPage({ params }: { params: { id: string }
                     min="0"
                     max="1"
                     step="0.1"
-                    value={config.temperature}
+                    value={config?.temperature || 0.7}
                     onChange={(e) => setConfig((prev) => ({ ...prev, temperature: parseFloat(e.target.value) }))}
                     className="mt-1 block w-full"
                   />
                   <div className="mt-1 text-sm text-gray-500">
-                    {config.temperature} (Higher values make the output more random, lower values make it more focused)
+                    {config?.temperature || 0.7} (Higher values make the output more random, lower values make it more focused)
                   </div>
                 </div>
 
@@ -185,7 +224,7 @@ export default function ChatbotSettingsPage({ params }: { params: { id: string }
                     min="100"
                     max="4000"
                     step="100"
-                    value={config.max_tokens}
+                    value={config?.max_tokens || 1000}
                     onChange={(e) => setConfig((prev) => ({ ...prev, max_tokens: parseInt(e.target.value) }))}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   />
