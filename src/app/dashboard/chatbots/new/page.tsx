@@ -20,23 +20,26 @@ export default function NewChatbotPage() {
     setLoading(true)
 
     try {
-      console.log('Submitting chatbot data:', { name, description, type });
+      // Prepare the request data
+      const chatbotData = {
+        name,
+        description,
+        type,
+        model_configuration: {
+          model: 'deepseek-chat',
+          temperature: 0.7,
+          max_tokens: 1000,
+        }
+      };
+      
+      console.log('Submitting chatbot data:', chatbotData);
       
       const response = await fetch('/api/chatbots', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name,
-          description,
-          type,
-          config: {
-            model: 'deepseek-chat',
-            temperature: 0.7,
-            max_tokens: 1000,
-          },
-        }),
+        body: JSON.stringify(chatbotData),
       });
 
       // Always parse the JSON response first

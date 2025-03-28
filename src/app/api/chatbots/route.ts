@@ -2,9 +2,15 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { Database } from '@/lib/supabase'
+import { v4 as uuidv4 } from 'uuid'
 
 // Define type for chatbot
 type Chatbot = Database['public']['Tables']['chatbots']['Row']
+
+// Helper function to generate API key
+function generateApiKey(): string {
+  return `ezbt_${uuidv4().replace(/-/g, '')}`
+}
 
 export async function POST(req: Request) {
   try {
@@ -16,7 +22,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { name, description, type, config } = body
+    const { name, description, type, model_configuration } = body
     
     if (!name || !description) {
       return NextResponse.json({ error: 'Name and description are required' }, { status: 400 })
@@ -51,7 +57,8 @@ export async function POST(req: Request) {
         primary_color: primaryColor,
         user_id: session.user.id,
         is_active: true,
-        model_configuration: config || {}
+        model_configuration: model_configuration || { model: 'deepseek-chat', temperature: 0.7, max_tokens: 1000 },
+        api_key: generateApiKey()
       })
       .select()
       .single()
