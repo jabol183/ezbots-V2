@@ -42,16 +42,24 @@ export default function NewChatbotPage() {
         body: JSON.stringify(chatbotData),
       });
 
-      // Get the raw response text first
+      // Get the raw response text for debugging
       const responseText = await response.text();
       console.log('Raw API response:', responseText);
+      
+      // Check if response is HTML (error page) or JSON
+      if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+        console.error('Received HTML instead of JSON:', responseText.substring(0, 150) + '...');
+        throw new Error(`Received HTML response instead of JSON. Status: ${response.status}`);
+      }
       
       // Then parse as JSON if possible
       let data: any = {};
       try {
         data = responseText ? JSON.parse(responseText) : {};
-      } catch (jsonError) {
-        console.error('Error parsing JSON response:', jsonError);
+      } catch (error) {
+        const jsonError = error as Error;
+        console.error('Error parsing JSON response:', jsonError, 'Response was:', responseText);
+        throw new Error(`Invalid JSON response: ${jsonError.message}`);
       }
       
       console.log('Parsed API response:', data);

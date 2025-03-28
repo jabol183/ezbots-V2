@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #4F46E5;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .tab.active {
+            border-bottom: 2px solid #4F46E5;
+            color: #4F46E5;
+            font-weight: 500;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        input, select {
+            padding: 8px;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .field {
+            margin-bottom: 15px;
+        }
+        button {
+            background-color: #4F46E5;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #4338CA;
+        }
+        .response-wrapper {
+            margin-top: 20px;
+        }
+        .response-status {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #ECFDF5;
+            color: #065F46;
+            border: 1px solid #10B981;
+        }
+        .error {
+            background-color: #FEF2F2;
+            color: #B91C1C;
+            border: 1px solid #EF4444;
+        }
+        .warning {
+            background-color: #FFFBEB;
+            color: #92400E;
+            border: 1px solid #F59E0B;
+        }
+        .response-content {
+            background-color: #F3F4F6;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin-bottom: 10px;
+        }
+        pre {
+            white-space: pre-wrap;
+            margin: 0;
+        }
+        .options {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .info-box {
+            background-color: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            color: #1E40AF;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .headers-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .headers-table th, .headers-table td {
+            border: 1px solid #E5E7EB;
+            padding: 8px;
+            text-align: left;
+        }
+        .headers-table th {
+            background-color: #F9FAFB;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Debug Tool</h1>
+    <div class="info-box">
+        This tool helps you debug API issues by sending requests with full control over headers and body data.
+    </div>
+    
+    <div class="tabs">
+        <div class="tab active" data-tab="chatbot-api">Chatbot API</div>
+        <div class="tab" data-tab="session-check">Session Check</div>
+        <div class="tab" data-tab="headers">Headers Analysis</div>
+    </div>
+    
+    <div id="chatbot-api" class="tab-content active">
+        <h2>Test Chatbot API</h2>
+        
+        <form id="apiForm">
+            <div class="field">
+                <label for="apiUrl">API URL:</label>
+                <input type="text" id="apiUrl" value="/api/chatbots" />
+            </div>
+            
+            <div class="field">
+                <label for="method">Method:</label>
+                <select id="method">
+                    <option value="GET">GET</option>
+                    <option value="POST" selected>POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+            </div>
+            
+            <div class="field">
+                <label for="requestBody">Request Body:</label>
+                <textarea id="requestBody">{
+  "name": "Test Chatbot",
+  "description": "This is a test chatbot",
+  "type": "support",
+  "model_configuration": {
+    "model": "deepseek-chat",
+    "temperature": 0.7,
+    "max_tokens": 1000
+  }
+}</textarea>
+            </div>
+            
+            <div class="options">
+                <button type="button" id="checkSessionBtn">Check Session First</button>
+                <button type="submit">Send Request</button>
+            </div>
+        </form>
+        
+        <div class="response-wrapper">
+            <h3>Response:</h3>
+            <div id="responseStatus" class="response-status"></div>
+            <div class="response-content">
+                <pre id="responseHeaders"></pre>
+            </div>
+            <div class="response-content">
+                <pre id="responseOutput">No response yet</pre>
+            </div>
+        </div>
+    </div>
+    
+    <div id="session-check" class="tab-content">
+        <h2>Session Check</h2>
+        <p>Check if you have a valid session with Supabase Authentication.</p>
+        <button id="checkSessionDetailsBtn">Check Session</button>
+        
+        <div class="response-wrapper">
+            <h3>Session Info:</h3>
+            <div id="sessionStatus" class="response-status"></div>
+            <div class="response-content">
+                <pre id="sessionOutput">No session checked yet</pre>
+            </div>
+        </div>
+    </div>
+    
+    <div id="headers" class="tab-content">
+        <h2>Headers Analysis</h2>
+        <p>Analyze the headers your browser is sending to the server.</p>
+        <button id="analyzeHeadersBtn">Analyze Headers</button>
+        
+        <div class="response-wrapper">
+            <h3>Headers:</h3>
+            <table class="headers-table" id="headersTable">
+                <thead>
+                    <tr>
+                        <th>Header Name</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="2">Click "Analyze Headers" to see your browser headers</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                document.getElementById(this.getAttribute('data-tab')).classList.add('active');
+            });
+        });
+        
+        // API Form submission
+        document.getElementById('apiForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const method = document.getElementById('method').value;
+            const url = document.getElementById('apiUrl').value;
+            const body = document.getElementById('requestBody').value;
+            const responseStatusElem = document.getElementById('responseStatus');
+            const responseHeadersElem = document.getElementById('responseHeaders');
+            const responseOutputElem = document.getElementById('responseOutput');
+            
+            responseStatusElem.className = 'response-status';
+            responseStatusElem.textContent = 'Sending request...';
+            responseHeadersElem.textContent = '';
+            responseOutputElem.textContent = '';
+            
+            try {
+                // Prepare request options
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                };
+                
+                if (method !== 'GET' && method !== 'HEAD' && body.trim()) {
+                    options.body = body;
+                }
+                
+                // Send the request
+                const response = await fetch(url, options);
+                
+                // Display response headers
+                const headers = [];
+                response.headers.forEach((value, key) => {
+                    headers.push(`${key}: ${value}`);
+                });
+                responseHeadersElem.textContent = headers.join('\n');
+                
+                // Get response text
+                const responseText = await response.text();
+                
+                // Try to parse as JSON, but fallback to text
+                try {
+                    if (responseText.trim() && !responseText.trim().startsWith('<!DOCTYPE') && !responseText.trim().startsWith('<html')) {
+                        const jsonData = JSON.parse(responseText);
+                        responseOutputElem.textContent = JSON.stringify(jsonData, null, 2);
+                    } else {
+                        // Handle HTML response (likely an error page)
+                        responseOutputElem.textContent = responseText.substring(0, 1000) + 
+                            (responseText.length > 1000 ? '\n\n[Content truncated...]' : '');
+                    }
+                } catch (err) {
+                    // Not JSON, show as plain text
+                    responseOutputElem.textContent = responseText;
+                }
+                
+                // Set status message with color
+                if (response.ok) {
+                    responseStatusElem.className = 'response-status success';
+                    responseStatusElem.textContent = `Success: ${response.status} ${response.statusText}`;
+                } else {
+                    responseStatusElem.className = 'response-status error';
+                    responseStatusElem.textContent = `Error: ${response.status} ${response.statusText}`;
+                }
+            } catch (err) {
+                responseStatusElem.className = 'response-status error';
+                responseStatusElem.textContent = `Error: ${err.message}`;
+                responseOutputElem.textContent = err.stack || err.message;
+            }
+        });
+        
+        // Check session
+        async function checkSession() {
+            const sessionStatusElem = document.getElementById('sessionStatus');
+            const sessionOutputElem = document.getElementById('sessionOutput');
+            
+            sessionStatusElem.className = 'response-status';
+            sessionStatusElem.textContent = 'Checking session...';
+            
+            try {
+                const response = await fetch('/api/auth/session');
+                const data = await response.json();
+                
+                sessionOutputElem.textContent = JSON.stringify(data, null, 2);
+                
+                if (data && data.user) {
+                    sessionStatusElem.className = 'response-status success';
+                    sessionStatusElem.textContent = `Session found for user: ${data.user.email}`;
+                } else {
+                    sessionStatusElem.className = 'response-status warning';
+                    sessionStatusElem.textContent = 'No active session found. Please log in.';
+                }
+            } catch (err) {
+                sessionStatusElem.className = 'response-status error';
+                sessionStatusElem.textContent = `Error checking session: ${err.message}`;
+                sessionOutputElem.textContent = err.stack || err.message;
+            }
+        }
+        
+        document.getElementById('checkSessionBtn').addEventListener('click', checkSession);
+        document.getElementById('checkSessionDetailsBtn').addEventListener('click', checkSession);
+        
+        // Analyze headers
+        document.getElementById('analyzeHeadersBtn').addEventListener('click', async function() {
+            const headersTableBody = document.querySelector('#headersTable tbody');
+            headersTableBody.innerHTML = '';
+            
+            try {
+                const response = await fetch('/api/echo-headers');
+                
+                if (!response.ok) {
+                    // If no echo-headers endpoint, make a simple request to analyze
+                    const req = new Request('/');
+                    headersTableBody.innerHTML = '<tr><td colspan="2">Using client-side headers (server headers not available)</td></tr>';
+                    
+                    // Get the default headers the browser would send
+                    const headers = {};
+                    req.headers.forEach((value, key) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${key}</td><td>${value}</td>`;
+                        headersTableBody.appendChild(row);
+                    });
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                // Display headers from server response
+                Object.entries(data.headers).forEach(([key, value]) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${key}</td><td>${value}</td>`;
+                    headersTableBody.appendChild(row);
+                });
+            } catch (err) {
+                headersTableBody.innerHTML = `<tr><td colspan="2">Error: ${err.message}</td></tr>`;
+            }
+        });
+    </script>
+</body>
+</html> 

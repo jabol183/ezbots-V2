@@ -13,11 +13,31 @@ function generateApiKey(): string {
 }
 
 export async function POST(req: Request) {
+  console.log('------------ API REQUEST START ------------');
+  console.log('POST /api/chatbots - Request received');
+  
+  // Log request information
+  console.log('Request URL:', req.url);
+  console.log('Request method:', req.method);
+  
+  // Log headers
+  console.log('Request headers:');
+  const headers: Record<string, string> = {};
+  req.headers.forEach((value, key) => {
+    headers[key] = value;
+    console.log(`  ${key}: ${value}`);
+  });
+  
   try {
+    console.log('Creating Supabase client...');
     const supabase = createRouteHandlerClient({ cookies })
+    
+    console.log('Checking session...');
     const { data: { session } } = await supabase.auth.getSession()
+    console.log('Session result:', session ? 'Session found' : 'No session');
 
     if (!session) {
+      console.log('ERROR: No auth session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -25,6 +45,8 @@ export async function POST(req: Request) {
       console.error('Missing user ID in session:', session);
       return NextResponse.json({ error: 'User ID not found in session' }, { status: 401 })
     }
+    
+    console.log('User ID from session:', session.user.id);
 
     // Log the raw request body for debugging
     const rawBody = await req.text();

@@ -4,6 +4,14 @@ import type { NextRequest } from 'next/server'
 
 // This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  
+  // Skip middleware for API routes to avoid interfering with them
+  if (path.startsWith('/api/')) {
+    console.log('Middleware: Skipping API route:', path);
+    return NextResponse.next();
+  }
+
   // Skip middleware in production mode when using static exports
   if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_SKIP_MIDDLEWARE === 'true') {
     return NextResponse.next()
@@ -19,8 +27,6 @@ export async function middleware(request: NextRequest) {
     } = await supabase.auth.getSession()
 
     // Handle redirects based on authentication status
-    const path = request.nextUrl.pathname
-
     // Paths that should redirect to login if not authenticated
     const protectedRoutes = ['/dashboard']
     // Check if the path starts with any of the protected routes
@@ -49,5 +55,15 @@ export async function middleware(request: NextRequest) {
 
 // See "Matching Paths" below to learn more
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: [
+    /*
+     * Match all paths except for:
+     * 1. /api routes
+     * 2. /_next (Next.js internals)
+     * 3. /fonts, /icons, /images (inside /public)
+     * 4. /favicon.ico, /sitemap.xml (commonly used static files)
+     * 5. All files with extensions (e.g. /file.json)
+     */
+    '/((?!api|_next/static|_next/image|fonts|icons|images|favicon.ico|sitemap.xml|.*\\..*$).*)',
+  ],
 } 
