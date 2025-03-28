@@ -7,9 +7,9 @@ import { v4 as uuidv4 } from 'uuid'
 // Define type for chatbot
 type Chatbot = Database['public']['Tables']['chatbots']['Row']
 
-// Helper function to generate API key
+// Helper function to generate API key (UUID format to match schema)
 function generateApiKey(): string {
-  return `ezbt_${uuidv4().replace(/-/g, '')}`
+  return uuidv4();
 }
 
 export async function POST(req: Request) {
@@ -21,8 +21,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await req.json()
-    const { name, description, type, model_configuration } = body
+    if (!session.user || !session.user.id) {
+      console.error('Missing user ID in session:', session);
+      return NextResponse.json({ error: 'User ID not found in session' }, { status: 401 })
+    }
+
+    // Log the raw request body for debugging
+    const rawBody = await req.text();
+    console.log('Raw request body:', rawBody);
+    
+    // Parse the body manually
+    let body;
+    try {
+      body = JSON.parse(rawBody);
+      console.log('Parsed request body:', body);
+    } catch (err) {
+      console.error('Error parsing JSON request body:', err);
+      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
+    
+    const { name, description, type, model_configuration } = body;
+    console.log('Extracted fields:', { name, description, type, model_configuration });
     
     if (!name || !description) {
       return NextResponse.json({ error: 'Name and description are required' }, { status: 400 })
@@ -48,31 +67,37 @@ export async function POST(req: Request) {
       primaryColor = '#F59E0B' // amber
     }
 
+    // Prepare the insert data
+    const insertData = {
+      name,
+      description,
+      welcome_message: welcomeMessage,
+      primary_color: primaryColor,
+      user_id: session.user.id,
+      is_active: true,
+      model_configuration: model_configuration || { model: 'deepseek-chat', temperature: 0.7, max_tokens: 1000 },
+      api_key: generateApiKey()
+    };
+    
+    console.log('Data to insert:', insertData);
+
     const { data: chatbot, error } = await supabase
       .from('chatbots')
-      .insert({
-        name,
-        description,
-        welcome_message: welcomeMessage,
-        primary_color: primaryColor,
-        user_id: session.user.id,
-        is_active: true,
-        model_configuration: model_configuration || { model: 'deepseek-chat', temperature: 0.7, max_tokens: 1000 },
-        api_key: generateApiKey()
-      })
+      .insert(insertData)
       .select()
-      .single()
+      .single();
 
     if (error) {
-      console.error('Error creating chatbot:', error)
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      console.error('Supabase error creating chatbot:', error);
+      return NextResponse.json({ error: error.message, details: error.details }, { status: 400 })
     }
 
+    console.log('Successfully created chatbot:', chatbot);
     return NextResponse.json(chatbot)
   } catch (error) {
     console.error('Unexpected error in chatbots POST route:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

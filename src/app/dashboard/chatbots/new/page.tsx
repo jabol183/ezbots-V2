@@ -42,12 +42,22 @@ export default function NewChatbotPage() {
         body: JSON.stringify(chatbotData),
       });
 
-      // Always parse the JSON response first
-      const data = await response.json();
-      console.log('Response from API:', data);
+      // Get the raw response text first
+      const responseText = await response.text();
+      console.log('Raw API response:', responseText);
+      
+      // Then parse as JSON if possible
+      let data: any = {};
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch (jsonError) {
+        console.error('Error parsing JSON response:', jsonError);
+      }
+      
+      console.log('Parsed API response:', data);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create chatbot')
+        throw new Error(data.error || `Failed to create chatbot: ${response.status} ${response.statusText}`)
       }
 
       router.push(`/dashboard/chatbots/${data.id}`)
