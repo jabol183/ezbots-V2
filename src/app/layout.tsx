@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        {/* Favicon will be handled in metadata */}
       </head>
       <body>
         <AuthProvider>
