@@ -72,7 +72,6 @@ export default function ChatbotEmbedPage({ params }: { params: { id: string } })
           chatbotId={params.id}
           primaryColor={chatbot?.primary_color}
           welcomeMessage={chatbot?.welcome_message}
-          // Use embedded mode to remove floating button
           embedded={true}
         />
       </div>
