@@ -1,8 +1,5 @@
 -- Schema for EzAIBotz Supabase Database
 
--- Enable Row Level Security (RLS)
-ALTER DATABASE postgres SET auth.strict_mode = on;
-
 -- Create tables with proper relations and security policies
 
 -- Chatbots Table
