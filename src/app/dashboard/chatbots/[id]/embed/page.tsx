@@ -3,10 +3,14 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import NavBar from '@/components/layout/NavBar'
+import { Database } from '@/lib/supabase'
+
+// Define type for chatbot
+type Chatbot = Database['public']['Tables']['chatbots']['Row']
 
 export default function ChatbotEmbedPage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const [chatbot, setChatbot] = useState<any>(null)
+  const [chatbot, setChatbot] = useState<Chatbot | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
@@ -119,7 +123,7 @@ export default function ChatbotEmbedPage({ params }: { params: { id: string } })
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h1 className="text-2xl font-semibold text-gray-900">{chatbot.name} - Embed Code</h1>
+                <h1 className="text-2xl font-semibold text-gray-900">{chatbot?.name || 'Chatbot'} - Embed Code</h1>
                 <button
                   onClick={() => router.back()}
                   className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-2 px-4 rounded"
@@ -199,7 +203,7 @@ export default function ChatbotEmbedPage({ params }: { params: { id: string } })
                   <div className="border p-4 rounded-lg relative h-96 bg-gray-50">
                     <h3 className="text-sm font-medium text-gray-700 mb-2">Floating Widget</h3>
                     <div className="absolute bottom-4 right-4">
-                      <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: chatbot.primary_color || '#4F46E5' }}>
+                      <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: chatbot?.primary_color || '#4F46E5' }}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
                           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                         </svg>
@@ -212,10 +216,10 @@ export default function ChatbotEmbedPage({ params }: { params: { id: string } })
                     <h3 className="text-sm font-medium text-gray-700 mb-2">Inline Widget</h3>
                     <div className="flex-1 border rounded-lg overflow-hidden">
                       <iframe 
-                        src={`/embed/${chatbot.id}`}
+                        src={`/embed/${chatbot?.id || ''}`}
                         className="w-full h-full"
                         frameBorder="0"
-                        title={`Chat with ${chatbot.name}`}
+                        title={`Chat with ${chatbot?.name || 'Chatbot'}`}
                       />
                     </div>
                   </div>

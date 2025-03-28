@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import ChatWidget from '@/components/ChatWidget'
+import { Database } from '@/lib/supabase'
+
+// Define type for chatbot
+type Chatbot = Database['public']['Tables']['chatbots']['Row']
 
 export default function ChatbotEmbedPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [chatbot, setChatbot] = useState<any>(null)
+  const [chatbot, setChatbot] = useState<Chatbot | null>(null)
 
   useEffect(() => {
     // Fetch chatbot details
@@ -57,17 +61,17 @@ export default function ChatbotEmbedPage({ params }: { params: { id: string } })
       {/* Embed Header */}
       <div 
         className="p-4 text-white font-medium"
-        style={{ backgroundColor: chatbot.primary_color || '#4F46E5' }}
+        style={{ backgroundColor: chatbot?.primary_color || '#4F46E5' }}
       >
-        {chatbot.name}
+        {chatbot?.name || 'Chat Assistant'}
       </div>
       
       {/* Inline Chat Widget (full height) */}
       <div className="flex-1 flex flex-col p-4 overflow-hidden">
         <ChatWidget 
           chatbotId={params.id}
-          primaryColor={chatbot.primary_color}
-          welcomeMessage={chatbot.welcome_message}
+          primaryColor={chatbot?.primary_color}
+          welcomeMessage={chatbot?.welcome_message}
           // Use embedded mode to remove floating button
           embedded={true}
         />

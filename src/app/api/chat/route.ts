@@ -4,6 +4,10 @@ import { NextResponse } from 'next/server'
 import { generateChatCompletion } from '@/lib/deepseek'
 import { setCorsHeaders, handleCorsPreflightRequest } from '@/lib/cors'
 import { v4 as uuidv4 } from 'uuid'
+import { Database } from '@/lib/supabase'
+
+// Type for chatbot
+type Chatbot = Database['public']['Tables']['chatbots']['Row']
 
 // Handle OPTIONS requests for CORS preflight
 export async function OPTIONS(request: Request) {

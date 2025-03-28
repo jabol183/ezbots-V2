@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EzAIBotz Widget Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #4F46E5;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .test-box {
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .note {
+            background-color: #fff8e6;
+            border-left: 4px solid #f59e0b;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+        }
+        code {
+            background: #f1f5f9;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .iframe-container {
+            height: 500px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>EzAIBotz Widget Test</h1>
+    
+    <div class="note">
+        <p><strong>Note:</strong> Replace <code>YOUR_CHATBOT_ID</code> in both examples below with a valid chatbot ID from your account.</p>
+    </div>
+    
+    <div class="container">
+        <div class="test-box">
+            <h2>Floating Widget</h2>
+            <p>This example shows the floating chat bubble in the bottom right corner.</p>
+            <p>The script has been included at the bottom of this page with a placeholder ID that you should update.</p>
+        </div>
+        
+        <div class="test-box">
+            <h2>Inline Widget (iframe)</h2>
+            <p>This example shows the chat widget embedded directly in the page as an iframe:</p>
+            
+            <div class="iframe-container">
+                <!-- Replace YOUR_CHATBOT_ID with a real chatbot ID -->
+                <iframe 
+                    src="/embed/YOUR_CHATBOT_ID" 
+                    title="Chat with EzAIBotz"
+                    allowtransparency="true">
+                </iframe>
+            </div>
+        </div>
+    </div>
+    
+    <!-- EzAIBotz Chat Widget (Floating) - Replace YOUR_CHATBOT_ID with a real chatbot ID -->
+    <script 
+        src="/widget.js" 
+        data-chatbot-id="YOUR_CHATBOT_ID"
+        data-primary-color="#4F46E5" 
+        data-api-url="/api/chat"
+        data-welcome-message="👋 Hello! How can I help you today?">
+    </script>
+</body>
+</html> 

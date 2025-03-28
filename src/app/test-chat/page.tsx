@@ -2,10 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import ChatWidget from '@/components/ChatWidget'
+import { Database } from '@/lib/supabase'
+
+// Define type for chatbot
+type Chatbot = Database['public']['Tables']['chatbots']['Row']
 
 export default function TestChatPage() {
   const [chatbotId, setChatbotId] = useState<string>('')
-  const [chatbots, setChatbots] = useState<any[]>([])
+  const [chatbots, setChatbots] = useState<Chatbot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
