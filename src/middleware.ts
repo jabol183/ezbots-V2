@@ -64,6 +64,6 @@ export const config = {
      * 4. /favicon.ico, /sitemap.xml (commonly used static files)
      * 5. All files with extensions (e.g. /file.json)
      */
-    '/((?!api|_next/static|_next/image|fonts|icons|images|favicon.ico|sitemap.xml|.*\\..*$).*)',
+    '/((?!_next|api\\/|fonts|icons|images|favicon.ico|sitemap.xml|.*\\..*$).*)',
   ],
 } 

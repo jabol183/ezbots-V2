@@ -12,6 +12,14 @@ function generateApiKey(): string {
   return uuidv4();
 }
 
+// Set CORS headers helper
+function setCorsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  return response;
+}
+
 export async function POST(req: Request) {
   console.log('------------ API REQUEST START ------------');
   console.log('POST /api/chatbots - Request received');
@@ -30,7 +38,8 @@ export async function POST(req: Request) {
   
   try {
     console.log('Creating Supabase client...');
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
     
     console.log('Checking session...');
     const { data: { session } } = await supabase.auth.getSession()
@@ -38,12 +47,12 @@ export async function POST(req: Request) {
 
     if (!session) {
       console.log('ERROR: No auth session found');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return setCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     }
 
     if (!session.user || !session.user.id) {
       console.error('Missing user ID in session:', session);
-      return NextResponse.json({ error: 'User ID not found in session' }, { status: 401 })
+      return setCorsHeaders(NextResponse.json({ error: 'User ID not found in session' }, { status: 401 }));
     }
     
     console.log('User ID from session:', session.user.id);
@@ -59,14 +68,14 @@ export async function POST(req: Request) {
       console.log('Parsed request body:', body);
     } catch (err) {
       console.error('Error parsing JSON request body:', err);
-      return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+      return setCorsHeaders(NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 }));
     }
     
     const { name, description, type, model_configuration } = body;
     console.log('Extracted fields:', { name, description, type, model_configuration });
     
     if (!name || !description) {
-      return NextResponse.json({ error: 'Name and description are required' }, { status: 400 })
+      return setCorsHeaders(NextResponse.json({ error: 'Name and description are required' }, { status: 400 }));
     }
 
     // Map type to welcome message
@@ -111,27 +120,28 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error('Supabase error creating chatbot:', error);
-      return NextResponse.json({ error: error.message, details: error.details }, { status: 400 })
+      return setCorsHeaders(NextResponse.json({ error: error.message, details: error.details }, { status: 400 }));
     }
 
     console.log('Successfully created chatbot:', chatbot);
-    return NextResponse.json(chatbot)
+    return setCorsHeaders(NextResponse.json(chatbot));
   } catch (error) {
     console.error('Unexpected error in chatbots POST route:', error)
-    return NextResponse.json(
+    return setCorsHeaders(NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
-    )
+    ));
   }
 }
 
 export async function GET(req: Request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return setCorsHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     }
 
     const { data: chatbots, error } = await supabase
@@ -140,15 +150,20 @@ export async function GET(req: Request) {
       .eq('user_id', session.user.id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return setCorsHeaders(NextResponse.json({ error: error.message }, { status: 400 }));
     }
 
-    return NextResponse.json(chatbots)
+    return setCorsHeaders(NextResponse.json(chatbots));
   } catch (error) {
     console.error('Unexpected error in chatbots GET route:', error)
-    return NextResponse.json(
+    return setCorsHeaders(NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
-    )
+    ));
   }
+}
+
+// Handle CORS preflight requests
+export async function OPTIONS() {
+  return setCorsHeaders(new NextResponse(null, { status: 204 }));
 } 

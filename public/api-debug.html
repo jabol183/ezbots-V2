@@ -241,19 +241,31 @@
             });
         });
         
+        // Helper function to get base URL with current port
+        function getBaseApiUrl() {
+            const currentPort = window.location.port;
+            return `${window.location.protocol}//${window.location.hostname}:${currentPort}`;
+        }
+        
         // API Form submission
         document.getElementById('apiForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const method = document.getElementById('method').value;
-            const url = document.getElementById('apiUrl').value;
+            let url = document.getElementById('apiUrl').value;
             const body = document.getElementById('requestBody').value;
             const responseStatusElem = document.getElementById('responseStatus');
             const responseHeadersElem = document.getElementById('responseHeaders');
             const responseOutputElem = document.getElementById('responseOutput');
             
+            // Make sure URL is absolute or add base URL
+            if (!url.startsWith('http')) {
+                const baseApiUrl = getBaseApiUrl();
+                url = `${baseApiUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+            }
+            
             responseStatusElem.className = 'response-status';
-            responseStatusElem.textContent = 'Sending request...';
+            responseStatusElem.textContent = `Sending ${method} request to ${url}...`;
             responseHeadersElem.textContent = '';
             responseOutputElem.textContent = '';
             
@@ -264,7 +276,8 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
-                    }
+                    },
+                    credentials: 'include' // Include cookies with the request
                 };
                 
                 if (method !== 'GET' && method !== 'HEAD' && body.trim()) {
@@ -323,14 +336,26 @@
             sessionStatusElem.textContent = 'Checking session...';
             
             try {
-                const response = await fetch('/api/auth/session');
+                const baseApiUrl = getBaseApiUrl();
+                const response = await fetch(`${baseApiUrl}/api/auth/session`, {
+                    credentials: 'include' // Include cookies with the request
+                });
+                
+                if (!response.ok) {
+                    sessionStatusElem.className = 'response-status error';
+                    sessionStatusElem.textContent = `Error: ${response.status} ${response.statusText}`;
+                    const responseText = await response.text();
+                    sessionOutputElem.textContent = responseText;
+                    return;
+                }
+                
                 const data = await response.json();
                 
                 sessionOutputElem.textContent = JSON.stringify(data, null, 2);
                 
-                if (data && data.user) {
+                if (data && data.session && data.session.user) {
                     sessionStatusElem.className = 'response-status success';
-                    sessionStatusElem.textContent = `Session found for user: ${data.user.email}`;
+                    sessionStatusElem.textContent = `Session found for user: ${data.session.user.email}`;
                 } else {
                     sessionStatusElem.className = 'response-status warning';
                     sessionStatusElem.textContent = 'No active session found. Please log in.';
@@ -351,7 +376,10 @@
             headersTableBody.innerHTML = '';
             
             try {
-                const response = await fetch('/api/echo-headers');
+                const baseApiUrl = getBaseApiUrl();
+                const response = await fetch(`${baseApiUrl}/api/echo-headers`, {
+                    credentials: 'include' // Include cookies
+                });
                 
                 if (!response.ok) {
                     // If no echo-headers endpoint, make a simple request to analyze

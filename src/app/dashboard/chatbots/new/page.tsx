@@ -34,12 +34,18 @@ export default function NewChatbotPage() {
       
       console.log('Submitting chatbot data:', chatbotData);
       
-      const response = await fetch('/api/chatbots', {
+      // Get the current URL to determine port, since it could be on 3001 instead of 3000
+      const currentPort = window.location.port;
+      const baseApiUrl = `${window.location.protocol}//${window.location.hostname}:${currentPort}`;
+      console.log(`Using API base URL: ${baseApiUrl}`);
+      
+      const response = await fetch(`${baseApiUrl}/api/chatbots`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(chatbotData),
+        credentials: 'include', // Include cookies with the request
       });
 
       // Get the raw response text for debugging
