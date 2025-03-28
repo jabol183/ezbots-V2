@@ -1,10 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import { useAuth } from '@/context/AuthContext'
+import UserMenu from './UserMenu'
 
 export default function NavBar() {
   const router = useRouter()
+  const pathname = usePathname()
+  const { isLoading: isSigningOut } = useAuth()
+
+  const isActivePath = (path: string) => {
+    return pathname === path || pathname?.startsWith(`${path}/`)
+  }
 
   return (
     <nav className="bg-white shadow-sm">
@@ -17,24 +25,40 @@ export default function NavBar() {
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link href="/dashboard" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+              <Link 
+                href="/dashboard" 
+                className={`${
+                  isActivePath('/dashboard') && !isActivePath('/dashboard/chatbots') && !isActivePath('/dashboard/analytics')
+                    ? 'border-indigo-500 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+              >
                 Dashboard
               </Link>
-              <Link href="/dashboard/chatbots" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+              <Link 
+                href="/dashboard/chatbots" 
+                className={`${
+                  isActivePath('/dashboard/chatbots')
+                    ? 'border-indigo-500 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+              >
                 Chatbots
               </Link>
-              <Link href="/dashboard/analytics" className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+              <Link 
+                href="/dashboard/analytics" 
+                className={`${
+                  isActivePath('/dashboard/analytics')
+                    ? 'border-indigo-500 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+              >
                 Analytics
               </Link>
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            <button
-              onClick={() => router.push('/api/auth/logout')}
-              className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Sign out
-            </button>
+            <UserMenu />
           </div>
         </div>
       </div>
