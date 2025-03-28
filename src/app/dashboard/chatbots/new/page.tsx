@@ -34,9 +34,8 @@ export default function NewChatbotPage() {
       
       console.log('Submitting chatbot data:', chatbotData);
       
-      // Get the current URL to determine port, since it could be on 3001 instead of 3000
-      const currentPort = window.location.port;
-      const baseApiUrl = `${window.location.protocol}//${window.location.hostname}:${currentPort}`;
+      // Use port 3000 specifically instead of dynamic detection
+      const baseApiUrl = `${window.location.protocol}//${window.location.hostname}:3000`;
       console.log(`Using API base URL: ${baseApiUrl}`);
       
       const response = await fetch(`${baseApiUrl}/api/chatbots`, {

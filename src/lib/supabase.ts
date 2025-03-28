@@ -5,60 +5,48 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-export type Database = {
+// Define database schema types
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
+export interface Database {
   public: {
     Tables: {
       chatbots: {
         Row: {
           id: string
           created_at: string
-          updated_at: string
-          user_id: string
           name: string
-          description: string | null
+          description: string
           welcome_message: string
           primary_color: string
+          user_id: string
           is_active: boolean
+          model_configuration: Json
           api_key: string
-          model_configuration: {
-            model?: string
-            temperature?: number
-            max_tokens?: number
-          }
         }
         Insert: {
           id?: string
           created_at?: string
-          updated_at?: string
-          user_id: string
           name: string
-          description?: string | null
-          welcome_message?: string
-          primary_color?: string
-          is_active?: boolean
-          api_key?: string
-          model_configuration?: {
-            model?: string
-            temperature?: number
-            max_tokens?: number
-          }
+          description: string
+          welcome_message: string
+          primary_color: string
+          user_id: string
+          is_active: boolean
+          model_configuration: Json
+          api_key: string
         }
         Update: {
           id?: string
           created_at?: string
-          updated_at?: string
-          user_id?: string
           name?: string
-          description?: string | null
+          description?: string
           welcome_message?: string
           primary_color?: string
+          user_id?: string
           is_active?: boolean
+          model_configuration?: Json
           api_key?: string
-          model_configuration?: {
-            model?: string
-            temperature?: number
-            max_tokens?: number
-          }
         }
       }
       messages: {
@@ -67,27 +55,27 @@ export type Database = {
           created_at: string
           chatbot_id: string
           session_id: string
-          user_message: string
-          ai_response: string
-          metadata: Record<string, any> | null
+          content: string
+          role: string
+          metadata: Json | null
         }
         Insert: {
           id?: string
           created_at?: string
           chatbot_id: string
           session_id: string
-          user_message: string
-          ai_response: string
-          metadata?: Record<string, any> | null
+          content: string
+          role: string
+          metadata?: Json | null
         }
         Update: {
           id?: string
           created_at?: string
           chatbot_id?: string
           session_id?: string
-          user_message?: string
-          ai_response?: string
-          metadata?: Record<string, any> | null
+          content?: string
+          role?: string
+          metadata?: Json | null
         }
       }
       analytics: {
@@ -95,34 +83,22 @@ export type Database = {
           id: string
           created_at: string
           chatbot_id: string
-          conversation_count: number
-          message_count: number
-          average_response_time: number
-          user_satisfaction: number
-          popular_topics: Array<{ topic: string; count: number }>
-          conversations_by_day: Record<string, number>
+          event_type: string
+          event_data: Json
         }
         Insert: {
           id?: string
           created_at?: string
           chatbot_id: string
-          conversation_count?: number
-          message_count?: number
-          average_response_time?: number
-          user_satisfaction?: number
-          popular_topics?: Array<{ topic: string; count: number }>
-          conversations_by_day?: Record<string, number>
+          event_type: string
+          event_data: Json
         }
         Update: {
           id?: string
           created_at?: string
           chatbot_id?: string
-          conversation_count?: number
-          message_count?: number
-          average_response_time?: number
-          user_satisfaction?: number
-          popular_topics?: Array<{ topic: string; count: number }>
-          conversations_by_day?: Record<string, number>
+          event_type?: string
+          event_data?: Json
         }
       }
       feedback: {
@@ -130,27 +106,36 @@ export type Database = {
           id: string
           created_at: string
           message_id: string
-          rating: number | null
+          rating: number
           comment: string | null
-          source: string | null
         }
         Insert: {
           id?: string
           created_at?: string
           message_id: string
-          rating?: number | null
+          rating: number
           comment?: string | null
-          source?: string | null
         }
         Update: {
           id?: string
           created_at?: string
           message_id?: string
-          rating?: number | null
+          rating?: number
           comment?: string | null
-          source?: string | null
         }
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      get_tables: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
+    }
+    Enums: {
+      [_ in never]: never
     }
   }
 } 

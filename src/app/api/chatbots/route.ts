@@ -42,7 +42,13 @@ export async function POST(req: Request) {
     const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
     
     console.log('Checking session...');
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return setCorsHeaders(NextResponse.json({ error: 'Authentication error', details: sessionError.message }, { status: 401 }));
+    }
+    
     console.log('Session result:', session ? 'Session found' : 'No session');
 
     if (!session) {
@@ -112,6 +118,27 @@ export async function POST(req: Request) {
     
     console.log('Data to insert:', insertData);
 
+    // First check if a chatbot with this name already exists for this user
+    const { data: existingChatbot, error: checkError } = await supabase
+      .from('chatbots')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('name', name)
+      .maybeSingle();
+      
+    if (checkError) {
+      console.error('Error checking for existing chatbot:', checkError);
+    }
+    
+    if (existingChatbot) {
+      console.log('Chatbot with this name already exists:', existingChatbot);
+      return setCorsHeaders(NextResponse.json({ 
+        error: 'A chatbot with this name already exists',
+        details: 'Please choose a different name' 
+      }, { status: 400 }));
+    }
+    
+    console.log('Inserting chatbot data into database...');
     const { data: chatbot, error } = await supabase
       .from('chatbots')
       .insert(insertData)
@@ -120,7 +147,19 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error('Supabase error creating chatbot:', error);
-      return setCorsHeaders(NextResponse.json({ error: error.message, details: error.details }, { status: 400 }));
+      return setCorsHeaders(NextResponse.json({ 
+        error: error.message || 'Failed to create chatbot', 
+        details: error.details || 'Database error - check schema and permissions',
+        code: error.code 
+      }, { status: 400 }));
+    }
+    
+    if (!chatbot) {
+      console.error('Chatbot creation failed with no error but no chatbot returned');
+      return setCorsHeaders(NextResponse.json({ 
+        error: 'Unknown error creating chatbot', 
+        details: 'The operation completed but no chatbot was returned'
+      }, { status: 500 }));
     }
 
     console.log('Successfully created chatbot:', chatbot);
