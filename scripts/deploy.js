@@ -3,7 +3,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 // Repository name - change this to your repo name
-const REPO_NAME = 'REPOSITORY-NAME';
+const REPO_NAME = 'ezbots-V2';
 
 // Create a CNAME file if you're using a custom domain
 // If not using a custom domain, you can remove this function and its call
@@ -33,11 +33,6 @@ function buildAndExport() {
 
 // Main function
 function main() {
-  // Ensure the REPOSITORY_NAME is set
-  if (REPO_NAME === 'REPOSITORY-NAME') {
-    console.warn('⚠️ Please update the REPO_NAME in scripts/deploy.js with your actual repository name');
-  }
-
   // Build the project
   buildAndExport();
 
