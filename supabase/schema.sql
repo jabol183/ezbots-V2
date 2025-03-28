@@ -7,51 +7,46 @@ ALTER DATABASE postgres SET auth.strict_mode = on;
 
 -- Chatbots Table
 CREATE TABLE IF NOT EXISTS public.chatbots (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  description TEXT,
-  welcome_message TEXT DEFAULT 'How can I help you today?',
-  primary_color TEXT DEFAULT '#4F46E5',
-  is_active BOOLEAN DEFAULT TRUE,
-  api_key UUID DEFAULT uuid_generate_v4() NOT NULL,
-  model_configuration JSONB DEFAULT '{}'::JSONB
+  description TEXT NOT NULL,
+  welcome_message TEXT NOT NULL,
+  primary_color TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  api_key UUID NOT NULL DEFAULT gen_random_uuid(),
+  model_configuration JSONB NOT NULL DEFAULT '{"model": "deepseek-chat", "temperature": 0.7, "max_tokens": 1000}'::jsonb
 );
 
 -- Messages Table
 CREATE TABLE IF NOT EXISTS public.messages (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
   chatbot_id UUID NOT NULL REFERENCES public.chatbots(id) ON DELETE CASCADE,
   session_id TEXT NOT NULL,
-  user_message TEXT NOT NULL,
-  ai_response TEXT NOT NULL,
-  metadata JSONB DEFAULT '{}'::JSONB
+  content TEXT NOT NULL,
+  role TEXT NOT NULL,
+  metadata JSONB
 );
 
 -- Analytics Table
 CREATE TABLE IF NOT EXISTS public.analytics (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
   chatbot_id UUID NOT NULL REFERENCES public.chatbots(id) ON DELETE CASCADE,
-  conversation_count INTEGER DEFAULT 0,
-  message_count INTEGER DEFAULT 0,
-  average_response_time FLOAT DEFAULT 0,
-  user_satisfaction FLOAT DEFAULT 0,
-  popular_topics JSONB DEFAULT '[]'::JSONB,
-  conversations_by_day JSONB DEFAULT '{}'::JSONB
+  event_type TEXT NOT NULL,
+  event_data JSONB NOT NULL
 );
 
 -- Feedback Table
 CREATE TABLE IF NOT EXISTS public.feedback (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
   message_id UUID NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE,
-  rating INTEGER,
-  comment TEXT,
-  source TEXT
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT
 );
 
 -- Set up Row Level Security Policies
@@ -180,11 +175,11 @@ CREATE OR REPLACE FUNCTION update_analytics_on_message()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Update message count
-  INSERT INTO public.analytics (chatbot_id, message_count, conversation_count)
-  VALUES (NEW.chatbot_id, 1, 0)
+  INSERT INTO public.analytics (chatbot_id, event_type, event_data)
+  VALUES (NEW.chatbot_id, 'message_added', jsonb_build_object('message_id', NEW.id))
   ON CONFLICT (chatbot_id) 
   DO UPDATE SET 
-    message_count = public.analytics.message_count + 1,
+    event_data = public.analytics.event_data || jsonb_build_object('message_id', NEW.id),
     updated_at = now();
   
   RETURN NEW;
@@ -201,4 +196,23 @@ EXECUTE FUNCTION update_analytics_on_message();
 CREATE INDEX idx_messages_chatbot_id ON public.messages(chatbot_id);
 CREATE INDEX idx_messages_session_id ON public.messages(session_id);
 CREATE INDEX idx_analytics_chatbot_id ON public.analytics(chatbot_id);
-CREATE INDEX idx_feedback_message_id ON public.feedback(message_id); 
+CREATE INDEX idx_feedback_message_id ON public.feedback(message_id);
+
+-- Create function to get tables
+CREATE OR REPLACE FUNCTION public.get_tables()
+RETURNS text[] AS $$
+BEGIN
+  RETURN ARRAY(
+    SELECT table_name::text
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+    AND table_type = 'BASE TABLE'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Add comment for documentation
+COMMENT ON TABLE public.chatbots IS 'Stores chatbot configurations';
+COMMENT ON TABLE public.messages IS 'Stores chat messages between users and chatbots';
+COMMENT ON TABLE public.analytics IS 'Stores analytics events for chatbots';
+COMMENT ON TABLE public.feedback IS 'Stores user feedback on chatbot responses'; 
